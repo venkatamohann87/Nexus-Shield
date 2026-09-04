@@ -1,0 +1,16 @@
+node_modules
+.next
+.env
+.env.local
+coverage
+*.tsbuildinfo
+*.log
+prisma/dev.db
+data/runtime-store.json
+# Never commit local LLM weights or exported model artifacts.
+models/
+*.gguf
+*.bin
+*.safetensors
+# Separate local project; it is not part of HumanShield.
+Nexus-Sheild/

@@ -1,0 +1,11 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+
+export default function RegisterPage() {
+  const router = useRouter(); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  async function submit(event: FormEvent): Promise<void> { event.preventDefault(); setLoading(true); setError(""); const response = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); const data = await response.json(); setLoading(false); if (!response.ok) return setError(data.error ?? "Registration failed"); router.push("/dashboard"); router.refresh(); }
+  return <main className="landing" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 18 }}><form className="card" onSubmit={submit} style={{ width: "100%", maxWidth: 430 }}><Link href="/" className="brand" style={{ padding: "0 0 18px" }}><span className="brand-mark">H</span>HumanShield <small style={{ color: "var(--cyan)" }}>AI</small></Link><p className="eyebrow">LOCAL SECURITY WORKSPACE</p><h1>Launch your console</h1><p className="muted">Create a local workspace to inspect protected Phi traffic and live security events.</p><div className="form-field"><label htmlFor="email">Email</label><input id="email" className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div><div className="form-field"><label htmlFor="password">Password</label><input id="password" className="input" type="password" minLength={12} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required /><span className="muted" style={{ fontSize: 11 }}>At least 12 characters.</span></div>{error && <p className="notice danger">{error}</p>}<button className="btn btn-primary" style={{ width: "100%", marginTop: 10 }} disabled={loading}>{loading ? "Creating workspace…" : "Create secure workspace"}</button><p className="muted" style={{ fontSize: 13 }}>Already registered? <Link href="/login" style={{ color: "var(--cyan)" }}>Sign in</Link></p></form></main>;
+}

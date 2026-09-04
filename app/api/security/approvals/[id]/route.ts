@@ -1,0 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { randomId, sha256 } from "@/lib/crypto";
+import { apiError, authenticated, body, csrfGuard, isResponse, rateLimit } from "@/lib/http";
+import { store } from "@/lib/store";
+const schema = z.object({ decision: z.enum(["APPROVED", "DENIED"]) });
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> { try { const limited = rateLimit(request); if (limited) return limited; const csrf = csrfGuard(request); if (csrf) return csrf; const user = await authenticated(); if (isResponse(user)) return user; if (!["SECURITY_ANALYST", "ADMIN"].includes(user.role)) return NextResponse.json({ error: "Approval requires analyst authorization" }, { status: 403 }); const { id } = await context.params; const input = await body(request, schema); const approval = store.resolveApproval(id, input.decision, user.id); if (!approval) return NextResponse.json({ error: "Pending approval not found" }, { status: 404 }); store.addEvent({ id: `evt_${randomId(10)}`, userId: user.id, eventType: "APPROVAL_RESOLVED", severity: input.decision === "DENIED" ? "MEDIUM" : "INFO", riskScore: approval.riskScore, source: "SECURITY_ANALYST", contentHash: sha256(approval.id), decision: input.decision, toolName: approval.toolName, createdAt: new Date().toISOString(), metadata: { approvalId: approval.id, origin: approval.origin } }); return NextResponse.json({ approval }); } catch (error) { return apiError(error); } }

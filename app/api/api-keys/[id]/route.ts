@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { apiError, authenticated, csrfGuard, isResponse, rateLimit } from "@/lib/http";
+import { store } from "@/lib/store";
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> { try { const limited = rateLimit(request); if (limited) return limited; const csrf = csrfGuard(request); if (csrf) return csrf; const user = await authenticated(); if (isResponse(user)) return user; if (!["SECURITY_ANALYST", "ADMIN"].includes(user.role)) return NextResponse.json({ error: "API key management requires analyst authorization" }, { status: 403 }); const { id } = await context.params; return store.revokeApiKey(id, user.id) ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Active API key not found" }, { status: 404 }); } catch (error) { return apiError(error); } }

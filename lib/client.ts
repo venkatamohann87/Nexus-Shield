@@ -1,0 +1,1 @@
+export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, init); const data: unknown = await response.json(); if (!response.ok) { const message = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string" ? data.error : "Request failed"; throw new Error(message); } return data as T; }

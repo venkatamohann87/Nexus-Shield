@@ -1,0 +1,7 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { apiError, authenticated, body, csrfGuard, isResponse, rateLimit } from "@/lib/http";
+import { store } from "@/lib/store";
+const schema = z.object({ label: z.string().trim().min(2).max(64) });
+export async function GET(request: NextRequest): Promise<NextResponse> { const limited = rateLimit(request, 120); if (limited) return limited; const user = await authenticated(); if (isResponse(user)) return user; if (!["SECURITY_ANALYST", "ADMIN"].includes(user.role)) return NextResponse.json({ error: "API key management requires analyst authorization" }, { status: 403 }); return NextResponse.json({ keys: store.apiKeys.filter((key) => key.userId === user.id).map(({ keyHash: _keyHash, ...safe }) => safe) }); }
+export async function POST(request: NextRequest): Promise<NextResponse> { try { const limited = rateLimit(request, 12); if (limited) return limited; const csrf = csrfGuard(request); if (csrf) return csrf; const user = await authenticated(); if (isResponse(user)) return user; if (!["SECURITY_ANALYST", "ADMIN"].includes(user.role)) return NextResponse.json({ error: "API key management requires analyst authorization" }, { status: 403 }); const { label } = await body(request, schema); const { record, raw } = store.createApiKey(user.id, label); const { keyHash: _keyHash, ...safe } = record; return NextResponse.json({ key: safe, token: raw, warning: "Copy this token now. It cannot be retrieved again." }, { status: 201 }); } catch (error) { return apiError(error); } }

@@ -1,0 +1,28 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+enum Role { USER SECURITY_ANALYST ADMIN }
+enum Decision { ALLOW BLOCK REQUIRE_HUMAN_APPROVAL APPROVED DENIED }
+enum Severity { INFO LOW MEDIUM HIGH CRITICAL }
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  role Role @default(USER)
+  createdAt DateTime @default(now())
+  sessions Session[]
+  credentials HumanCredential[]
+  events SecurityEvent[]
+  approvals SecurityApproval[] @relation("Approver")
+  apiKeys ApiKey[]
+}
+model Session { id String @id @default(cuid()); tokenHash String @unique; userId String; user User @relation(fields:[userId], references:[id], onDelete:Cascade); expiresAt DateTime; createdAt DateTime @default(now()); @@index([userId]) }
+model HumanCredential { id String @id @default(cuid()); credentialCommitment String @unique; userId String; user User @relation(fields:[userId], references:[id], onDelete:Cascade); verifiedAt DateTime?; status String; @@index([userId]) }
+model DomainNullifier { id String @id @default(cuid()); nullifierHash String @unique; domain String; credentialId String; credential HumanCredential @relation(fields:[credentialId], references:[id], onDelete:Cascade); @@unique([credentialId,domain]) }
+model Agent { id String @id @default(cuid()); name String; ownerId String; status String; createdAt DateTime @default(now()); events SecurityEvent[] }
+model Tool { id String @id @default(cuid()); name String @unique; description String; riskLevel Severity; policies ToolPolicy[] }
+model ToolPolicy { id String @id @default(cuid()); toolId String; tool Tool @relation(fields:[toolId], references:[id], onDelete:Cascade); allowedRoles Role[]; requiresHumanApproval Boolean @default(false); enabled Boolean @default(true); @@index([toolId]) }
+model SecurityEvent { id String @id @default(cuid()); userId String?; user User? @relation(fields:[userId],references:[id],onDelete:SetNull); sessionId String?; agentId String?; agent Agent? @relation(fields:[agentId],references:[id],onDelete:SetNull); eventType String; severity Severity; riskScore Int; source String; contentHash String; decision Decision; attackType String?; toolName String?; metadata Json?; createdAt DateTime @default(now()); @@index([createdAt]); @@index([userId,createdAt]); @@index([decision]) }
+model SecurityApproval { id String @id @default(cuid()); requesterId String; toolName String; reason String; riskScore Int; origin String; affectedResource String?; status Decision @default(REQUIRE_HUMAN_APPROVAL); approverId String?; approver User? @relation("Approver",fields:[approverId],references:[id],onDelete:SetNull); createdAt DateTime @default(now()); resolvedAt DateTime?; @@index([status,createdAt]) }
+model ApiKey { id String @id @default(cuid()); userId String; user User @relation(fields:[userId],references:[id],onDelete:Cascade); label String; prefix String; keyHash String @unique; createdAt DateTime @default(now()); revokedAt DateTime?; @@index([userId,revokedAt]) }
